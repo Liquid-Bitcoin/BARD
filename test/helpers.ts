@@ -33,3 +33,16 @@ export async function deployContract<T extends BaseContract>(
 
   return factory.attach(contract.target) as T;
 }
+
+export class Addressable {
+  get address(): string {
+    return this._address;
+  }
+
+  set address(value: string) {
+    this._address = value;
+  }
+
+  // @ts-ignore
+  private _address: string;
+}
