@@ -249,8 +249,10 @@ describe('TokenDistributor', function () {
       });
 
       it('changePauser() reverts if new pauser is 0 address', async function () {
-        await expect(tokenDistributor.connect(owner).changePauser(ethers.ZeroAddress))
-          .to.revertedWithCustomError(tokenDistributor, 'WrongAddress');
+        await expect(tokenDistributor.connect(owner).changePauser(ethers.ZeroAddress)).to.revertedWithCustomError(
+          tokenDistributor,
+          'WrongAddress'
+        );
       });
 
       it('changeVault() reverts when called by not owner', async function () {
