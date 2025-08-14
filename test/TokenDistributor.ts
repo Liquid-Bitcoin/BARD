@@ -50,7 +50,7 @@ const WRONG_PROOF = [
 ];
 
 describe('TokenDistributor', function () {
-  let deployer: Signer, owner: Signer, treasury: Signer, signer1: Signer, signer2: Signer;
+  let deployer: Signer, owner: Signer, treasury: Signer, signer1: Signer, signer2: Signer, pauser: Signer;
   let bard: BARD & Addressable;
   let tokenDistributor: TokenDistributor & Addressable;
   let snapshot: SnapshotRestorer;
@@ -59,7 +59,7 @@ describe('TokenDistributor', function () {
   let vault: ERC4626Mock & Addressable;
 
   before(async function () {
-    [deployer, owner, treasury, signer1, signer2] = await getSignersWithPrivateKeys();
+    [deployer, owner, treasury, signer1, signer2, pauser] = await getSignersWithPrivateKeys();
 
     claimEnd = (await time.latest()) + CLAIM_PERIOD;
 
@@ -71,7 +71,7 @@ describe('TokenDistributor', function () {
 
     tokenDistributor = await deployContract<TokenDistributor & Addressable>(
       'TokenDistributor',
-      [MERKLE_ROOT, bard.address, owner, claimEnd, vault],
+      [MERKLE_ROOT, bard.address, owner, claimEnd, vault, pauser],
       false
     );
     tokenDistributor.address = await tokenDistributor.getAddress();
@@ -88,7 +88,7 @@ describe('TokenDistributor', function () {
         await expect(
           deployContract<TokenDistributor>(
             'TokenDistributor',
-            [MERKLE_ROOT, bard.address, owner, claimEnd, vault],
+            [MERKLE_ROOT, bard.address, owner, claimEnd, vault, pauser],
             false
           )
         ).to.not.reverted;
@@ -98,7 +98,7 @@ describe('TokenDistributor', function () {
         await expect(
           deployContract<TokenDistributor>(
             'TokenDistributor',
-            [MERKLE_ROOT, bard.address, owner, claimEnd, ethers.ZeroAddress],
+            [MERKLE_ROOT, bard.address, owner, claimEnd, ethers.ZeroAddress, pauser],
             false
           )
         ).to.not.reverted;
@@ -115,7 +115,8 @@ describe('TokenDistributor', function () {
               bard.address,
               owner,
               claimEnd,
-              vault
+              vault,
+              pauser
             ],
             false
           )
@@ -126,7 +127,7 @@ describe('TokenDistributor', function () {
         await expect(
           deployContract<TokenDistributor>(
             'TokenDistributor',
-            [MERKLE_ROOT, ethers.ZeroAddress, owner, claimEnd, vault],
+            [MERKLE_ROOT, ethers.ZeroAddress, owner, claimEnd, vault, pauser],
             false
           )
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidToken');
@@ -136,7 +137,7 @@ describe('TokenDistributor', function () {
         await expect(
           deployContract<TokenDistributor>(
             'TokenDistributor',
-            [MERKLE_ROOT, bard.address, ethers.ZeroAddress, claimEnd, vault],
+            [MERKLE_ROOT, bard.address, ethers.ZeroAddress, claimEnd, vault, pauser],
             false
           )
         ).to.revertedWithCustomError(tokenDistributor, 'OwnableInvalidOwner');
@@ -147,10 +148,21 @@ describe('TokenDistributor', function () {
         await expect(
           deployContract<TokenDistributor>(
             'TokenDistributor',
-            [MERKLE_ROOT, bard.address, owner, claimEndLocal, vault],
+            [MERKLE_ROOT, bard.address, owner, claimEndLocal, vault, pauser],
             false
           )
         ).to.revertedWithCustomError(tokenDistributor, 'WrongClaimEnd');
+      });
+
+      it('Reverts if pauser is 0 address', async function () {
+        const claimEndLocal = await time.latest();
+        await expect(
+          deployContract<TokenDistributor>(
+            'TokenDistributor',
+            [MERKLE_ROOT, bard.address, owner, claimEnd, ethers.ZeroAddress, ethers.ZeroAddress],
+            false
+          )
+        ).to.revertedWithCustomError(tokenDistributor, 'WrongAddress');
       });
     });
   });
@@ -164,7 +176,7 @@ describe('TokenDistributor', function () {
         claimEndAlt = (await time.latest()) + 250;
         tokenDistributorAlt = await deployContract<TokenDistributor & Addressable>(
           'TokenDistributor',
-          [MERKLE_ROOT_WRONG, bard.address, signer2, claimEndAlt, signer1.address],
+          [MERKLE_ROOT_WRONG, bard.address, signer2, claimEndAlt, signer1.address, pauser],
           false
         );
       });
@@ -187,6 +199,10 @@ describe('TokenDistributor', function () {
 
       it('vault', async function () {
         expect(await tokenDistributorAlt.VAULT()).to.be.eq(signer1.address);
+      });
+
+      it('pauser', async function () {
+        expect(await tokenDistributorAlt.PAUSER()).to.be.eq(pauser.address);
       });
     });
 
@@ -212,6 +228,33 @@ describe('TokenDistributor', function () {
 
       it('changeVault() reverts when called by not owner', async function () {
         await expect(tokenDistributor.connect(signer1).changeVault(signer2.address))
+          .to.revertedWithCustomError(tokenDistributor, 'OwnableUnauthorizedAccount')
+          .withArgs(signer1.address);
+      });
+    });
+
+    describe('Pauser', function () {
+      before(async function () {
+        await snapshot.restore();
+      });
+
+      it('changePauser() works if called by the owner', async function () {
+        const oldPauser = await tokenDistributor.PAUSER();
+
+        await expect(await tokenDistributor.connect(owner).changePauser(signer1.address))
+          .to.emit(tokenDistributor, 'PauserChanged')
+          .withArgs(oldPauser, signer1.address);
+        const newPauser = await tokenDistributor.PAUSER();
+        expect(newPauser).to.be.eq(signer1.address);
+      });
+
+      it('changePauser() reverts if new pauser is 0 address', async function () {
+        await expect(tokenDistributor.connect(owner).changePauser(ethers.ZeroAddress))
+          .to.revertedWithCustomError(tokenDistributor, 'WrongAddress');
+      });
+
+      it('changeVault() reverts when called by not owner', async function () {
+        await expect(tokenDistributor.connect(signer1).changePauser(signer2.address))
           .to.revertedWithCustomError(tokenDistributor, 'OwnableUnauthorizedAccount')
           .withArgs(signer1.address);
       });
@@ -455,6 +498,36 @@ describe('TokenDistributor', function () {
             AMOUNT_01 + 1n
           )
         ).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
+      });
+
+      it('Claim should not work if contract is paused', async () => {
+        await tokenDistributor.connect(pauser).pause();
+
+        await expect(tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01)).to.revertedWithCustomError(
+          tokenDistributor,
+          'EnforcedPause'
+        );
+      });
+
+      it('ClaimAndStake should not work is paused (stake all)', async () => {
+        await tokenDistributor.connect(pauser).pause();
+
+        await expect(
+          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01)
+        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+      });
+
+      it('ClaimAndStake should not work is paused (partial stake)', async () => {
+        await tokenDistributor.connect(pauser).pause();
+
+        await expect(
+          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
+            RECIPIENT_01,
+            AMOUNT_01,
+            PROOF_01,
+            AMOUNT_01 / 2n
+          )
+        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
     });
   });
