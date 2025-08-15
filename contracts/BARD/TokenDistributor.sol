@@ -5,10 +5,11 @@ import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract TokenDistributor is Ownable2Step, ReentrancyGuard {
+contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -30,6 +31,11 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
     /// @param newVault The address of new vault.
     event VaultChanged(address indexed oldVault, address indexed newVault);
 
+    /// @notice Emitted when the owner changes pauser.
+    /// @param oldPauser The address of old vault.
+    /// @param newPauser The address of new vault.
+    event PauserChanged(address indexed oldPauser, address indexed newPauser);
+
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -45,6 +51,8 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
     error StakingNotEnabled();
     error WrongStakeAmount();
     error WrongClaimEnd();
+    error Unauthorized();
+    error WrongAddress();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -65,6 +73,9 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
 
     /// @notice The vault to deposit token for staking.
     IERC4626 public VAULT;
+
+    /// @notice The the address of account with pauser right
+    address public PAUSER;
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -88,21 +99,60 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
         address _token,
         address _owner,
         uint256 _claimEnd,
-        address _vault
+        address _vault,
+        address _pauser
     ) Ownable(_owner) {
         if (_token == address(0)) revert InvalidToken();
         if (_merkleRoot == bytes32(0)) revert InvalidMerkleRoot();
         if (_claimEnd <= block.timestamp) revert WrongClaimEnd();
+        if (_pauser == address(0)) revert WrongAddress();
 
         MERKLE_ROOT = _merkleRoot;
         TOKEN = IERC20(_token);
         CLAIM_END = _claimEnd;
         VAULT = IERC4626(_vault);
+        PAUSER = _pauser;
+    }
+
+    /// MODIFIER ///
+    /**
+     * PAUSE
+     */
+    modifier onlyPauser() {
+        if (PAUSER != _msgSender()) {
+            revert Unauthorized();
+        }
+        _;
     }
 
     /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    /// ACCESS CONTROL FUNCTIONS ///
+
+    function changePauser(address newPauser) external onlyOwner {
+        if (newPauser == address(0)) {
+            revert WrongAddress();
+        }
+        address oldPauser = PAUSER;
+        PAUSER = newPauser;
+        emit PauserChanged(oldPauser, newPauser);
+    }
+
+    /**
+     * Pause deposit reporting and withdrawal validation.
+     */
+    function pause() public onlyPauser {
+        _pause();
+    }
+
+    /**
+     * Unpause deposit reporting and withdrawal validation.
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
 
     /// @notice Claim tokens using a signature and merkle proof.
     /// @param _account The account to claim tokens for.
@@ -112,7 +162,7 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
         address _account,
         uint256 _amount,
         bytes32[] calldata _merkleProof
-    ) external nonReentrant {
+    ) external whenNotPaused nonReentrant {
         _validateClaim(_account, _amount, _merkleProof);
 
         // Mark as claimed and send the tokens
@@ -130,7 +180,7 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
         address _account,
         uint256 _amount,
         bytes32[] calldata _merkleProof
-    ) external nonReentrant {
+    ) external whenNotPaused nonReentrant {
         _claimAndStake(_account, _amount, _merkleProof, _amount);
     }
 
@@ -139,7 +189,7 @@ contract TokenDistributor is Ownable2Step, ReentrancyGuard {
         uint256 _amount,
         bytes32[] calldata _merkleProof,
         uint256 _stakeAmount
-    ) external nonReentrant {
+    ) external whenNotPaused nonReentrant {
         _claimAndStake(_account, _amount, _merkleProof, _stakeAmount);
     }
 
