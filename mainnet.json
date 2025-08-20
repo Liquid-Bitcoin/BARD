@@ -1,0 +1,15 @@
+{
+  "mainnet": {
+    "chainId": "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "admin": {
+      "Owner": "0x629692bBcA65a94DEeBd98de93bd74531561140d",
+      "Treasury": "0x629692bBcA65a94DEeBd98de93bd74531561140d",
+      "TimeLock": "",
+      "Deployer": ["0x257D24f8F9dE1adB365b4C0061A8D4274b1c8a9d"]
+    },
+    "liquid-bitcoin": {
+      "BARD": "0xf0DB65D17e30a966C2ae6A21f6BBA71cea6e9754",
+      "TokenDistributor": ""
+    }
+  }
+}
