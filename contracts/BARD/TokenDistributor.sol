@@ -8,6 +8,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -21,6 +22,16 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @param amount The amount of tokens claimed.
     event Claimed(address indexed user, uint256 amount);
 
+    /// @notice Emitted when a user claims tokens.
+    /// @param user The user identificator.
+    /// @param amount The amount of tokens claimed.
+    /// @param dstAddress The destination address of the claim.
+    event ClaimedWithProof(
+        bytes32 indexed user,
+        uint256 amount,
+        address dstAddress
+    );
+
     /// @notice Emitted when the owner withdraws tokens.
     /// @param owner The owner address.
     /// @param amount The amount of tokens withdrawn.
@@ -30,6 +41,14 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @param oldVault The address of old vault.
     /// @param newVault The address of new vault.
     event VaultChanged(address indexed oldVault, address indexed newVault);
+
+    /// @notice Emitted when the owner changes the approver address.
+    /// @param oldApprover The address of old approver.
+    /// @param newApprover The address of new approver.
+    event ApproverChanged(
+        address indexed oldApprover,
+        address indexed newApprover
+    );
 
     /// @notice Emitted when the owner changes pauser.
     /// @param oldPauser The address of old vault.
@@ -42,10 +61,10 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
     error InvalidAmount();
     error AlreadyClaimed();
-    error InvalidProof();
+    error InvalidMerkleProof();
     error InvalidToken();
     error InvalidMerkleRoot();
-    error EmptyProof();
+    error EmptyMerkleProof();
     error ClaimFinished();
     error ClaimNotFinished();
     error StakingNotEnabled();
@@ -53,6 +72,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     error WrongClaimEnd();
     error Unauthorized();
     error WrongAddress();
+    error ClaimWithProofNotEnabled();
+    error InvalidProof();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -77,12 +98,18 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @notice The the address of account with pauser right
     address public PAUSER;
 
+    /// @notice Mapping of claimed status.
+    mapping(address user => bool claimed) public hasClaimed;
+
+    /// @notice Mapping of claimed status.
+    mapping(bytes32 user => bool claimed) public hasClaimedByProof;
+
+    /// @notice The address that acts as and approved for claiming tokens to arbitrary address.
+    address public APPROVER;
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
-
-    /// @notice Mapping of claimed status.
-    mapping(address user => bool claimed) public hasClaimed;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -94,13 +121,15 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @param _owner The owner address.
     /// @param _claimEnd The timestamp when the claim period ends.
     /// @param _vault The address of the vault to be deposit destination in case of claim and stake.
+    /// @param _approver The address that acts as and approved for claiming tokens to arbitrary address.
     constructor(
         bytes32 _merkleRoot,
         address _token,
         address _owner,
         uint256 _claimEnd,
         address _vault,
-        address _pauser
+        address _pauser,
+        address _approver
     ) Ownable(_owner) {
         if (_token == address(0)) revert InvalidToken();
         if (_merkleRoot == bytes32(0)) revert InvalidMerkleRoot();
@@ -112,6 +141,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         CLAIM_END = _claimEnd;
         VAULT = IERC4626(_vault);
         PAUSER = _pauser;
+        APPROVER = _approver;
     }
 
     /// MODIFIER ///
@@ -172,6 +202,32 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit Claimed(_account, _amount);
     }
 
+    /// @notice Claim tokens using a signature and merkle proof.
+    /// @param _account The account to claim tokens for.
+    /// @param _amount Amount of tokens to claim.
+    /// @param _merkleProof Merkle proof of claim.
+    function claimWithProof(
+        bytes32 _account,
+        uint256 _amount,
+        address _dstAddress,
+        bytes32[] calldata _merkleProof,
+        bytes calldata _proof
+    ) external whenNotPaused nonReentrant {
+        _validateClaimWithProof(
+            _account,
+            _amount,
+            _dstAddress,
+            _merkleProof,
+            _proof
+        );
+
+        // Mark as claimed and send the tokens
+        hasClaimedByProof[_account] = true;
+        TOKEN.safeTransfer(_dstAddress, _amount);
+
+        emit ClaimedWithProof(_account, _amount, _dstAddress);
+    }
+
     /// @notice Claim tokens using a signature and merkle proof and stake them with predefined vault.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
@@ -184,6 +240,11 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         _claimAndStake(_account, _amount, _merkleProof, _amount);
     }
 
+    /// @notice Claim tokens using a signature and merkle proof and stake part of them with predefined vault.
+    /// @param _account The account to claim tokens for.
+    /// @param _amount Amount of tokens to claim.
+    /// @param _merkleProof Merkle proof of claim.
+    /// @param _stakeAmount Amount to stake.
     function claimAndStake(
         address _account,
         uint256 _amount,
@@ -191,6 +252,30 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 _stakeAmount
     ) external whenNotPaused nonReentrant {
         _claimAndStake(_account, _amount, _merkleProof, _stakeAmount);
+    }
+
+    /// @notice Claim tokens to arbitrary address using a signature and merkle proof and stake part of
+    ///         them with predefined vault.
+    /// @param _account The account to claim tokens for.
+    /// @param _amount Amount of tokens to claim.
+    /// @param _merkleProof Merkle proof of claim.
+    /// @param _stakeAmount Amount to stake.
+    function claimAndStakeWithProof(
+        bytes32 _account,
+        uint256 _amount,
+        address _dstAddress,
+        bytes32[] calldata _merkleProof,
+        uint256 _stakeAmount,
+        bytes calldata _proof
+    ) external whenNotPaused nonReentrant {
+        _claimAndStakeWithProof(
+            _account,
+            _amount,
+            _dstAddress,
+            _merkleProof,
+            _stakeAmount,
+            _proof
+        );
     }
 
     /// @notice Withdraw tokens from the contract.
@@ -210,6 +295,13 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit VaultChanged(oldVault, _newVault);
     }
 
+    /// @notice Change Approver to claim on an arbitrary address
+    function changeApprover(address _newApprover) external onlyOwner {
+        address oldApprover = address(APPROVER);
+        APPROVER = _newApprover;
+        emit ApproverChanged(oldApprover, _newApprover);
+    }
+
     /*//////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -220,7 +312,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     ) internal view {
         if (_amount == 0) revert InvalidAmount();
         if (hasClaimed[_account]) revert AlreadyClaimed();
-        if (_merkleProof.length == 0) revert EmptyProof();
+        if (_merkleProof.length == 0) revert EmptyMerkleProof();
         if (block.timestamp >= CLAIM_END) revert ClaimFinished();
 
         // Generate the leaf
@@ -230,7 +322,45 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
         // Verify the merkle proof
         if (!MerkleProof.verify(_merkleProof, MERKLE_ROOT, leaf))
+            revert InvalidMerkleProof();
+    }
+
+    function _validateClaimWithProof(
+        bytes32 _account,
+        uint256 _amount,
+        address _dstAddress,
+        bytes32[] calldata _merkleProof,
+        bytes calldata proof
+    ) internal view {
+        if (_amount == 0) revert InvalidAmount();
+        if (hasClaimedByProof[_account]) revert AlreadyClaimed();
+        if (_merkleProof.length == 0) revert EmptyMerkleProof();
+        if (block.timestamp >= CLAIM_END) revert ClaimFinished();
+        if (APPROVER == address(0)) revert ClaimWithProofNotEnabled();
+
+        // Generate the leaf
+        bytes32 leaf = keccak256(
+            bytes.concat(keccak256(abi.encode(_account, _amount)))
+        );
+
+        // Verify the merkle proof
+        if (!MerkleProof.verify(_merkleProof, MERKLE_ROOT, leaf))
+            revert InvalidMerkleProof();
+
+        // Verify proof provided by approver
+        bytes32 data = keccak256(abi.encode(_account, _amount, _dstAddress));
+        (address signer, ECDSA.RecoverError err, ) = ECDSA.tryRecover(
+            data,
+            proof
+        );
+        // ignore if bad signature
+        if (err != ECDSA.RecoverError.NoError) {
             revert InvalidProof();
+        }
+        // if signer doesn't match consider data invalid
+        if (signer != APPROVER) {
+            revert InvalidProof();
+        }
     }
 
     function _claimAndStake(
@@ -254,5 +384,36 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         }
 
         emit Claimed(_account, _amount);
+    }
+
+    function _claimAndStakeWithProof(
+        bytes32 _account,
+        uint256 _amount,
+        address _dstAddress,
+        bytes32[] calldata _merkleProof,
+        uint256 _stakeAmount,
+        bytes calldata _proof
+    ) internal {
+        if (address(VAULT) == address(0)) revert StakingNotEnabled();
+        if (_amount < _stakeAmount) revert WrongStakeAmount();
+        _validateClaimWithProof(
+            _account,
+            _amount,
+            _dstAddress,
+            _merkleProof,
+            _proof
+        );
+
+        // Mark as claimed and send the tokens
+        hasClaimedByProof[_account] = true;
+        if (_amount > _stakeAmount) {
+            TOKEN.safeTransfer(_dstAddress, _amount - _stakeAmount);
+        }
+        if (_stakeAmount > 0) {
+            TOKEN.safeIncreaseAllowance(address(VAULT), _stakeAmount);
+            VAULT.deposit(_stakeAmount, _dstAddress);
+        }
+
+        emit ClaimedWithProof(_account, _amount, _dstAddress);
     }
 }
