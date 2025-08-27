@@ -17,7 +17,7 @@ const PROOF_01 = [
   '0x0ff267a677ed4694c850c89257c671017d01705a1b4b6ceabb69bcf3b003aa8f',
   '0xc87fc0ad44e20e2dff441f01823daa1ef24f7ce79c986fed570e5714289fbb99',
   '0x3c6f450b1084038d5d80ee42e0425de2bdcd476b9314723d3c7384f772805bb8',
-  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803',
+  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803'
 ];
 const RECIPIENT_02 = '0xf8587Bfb4d3E0B31029eFA09D595ee6179ddfEAA';
 const AMOUNT_02 = 2524912688505039872n;
@@ -28,7 +28,7 @@ const PROOF_02 = [
   '0x0ff267a677ed4694c850c89257c671017d01705a1b4b6ceabb69bcf3b003aa8f',
   '0xc87fc0ad44e20e2dff441f01823daa1ef24f7ce79c986fed570e5714289fbb99',
   '0x3c6f450b1084038d5d80ee42e0425de2bdcd476b9314723d3c7384f772805bb8',
-  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803',
+  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803'
 ];
 const RECIPIENT_03 = '0xdb6e9e7390e9ACC34619E56eFa48ade01cFF6F12';
 const AMOUNT_03 = 340897722051460992n;
@@ -39,7 +39,7 @@ const PROOF_03 = [
   '0xa69aed2612e3b2b0055ab44a73fb4fa6f73ecbc003a2b636416c2537ce3cd16a',
   '0x009e99d40d039906ed644781f2ce6b234df30bc66e010095a1ab99ec34cd9819',
   '0x3c6f450b1084038d5d80ee42e0425de2bdcd476b9314723d3c7384f772805bb8',
-  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803',
+  '0xfe9d729e1feb1274de89b11df1fc2c4a1648449bf2c597da55c5363a244a0803'
 ];
 const RECIPIENT_SUI = '0xead4337a3c8909c6d1bc7be61993ad959158ed034a904ddab9192d7a87de3a05';
 const AMOUNT_SUI = 5831691959478484n;
@@ -47,7 +47,7 @@ const PROOF_SUI = [
   '0x783f91743e07fe0c93f7415a842bfbf43ead123a5054b13ccdc915c2fe704cf3',
   '0x50b0ada26c3413e4ac7f82b6c9029b224e62de262d77b5c454eefc6aea9269fe',
   '0x940dbdb231e99127719ff39fa43d0cea54f24fe32e1df871a8a7df59ed613255',
-  '0x9e18a68c137ad5644ca933b878f255eb700c75ec283a4ff0d6adbba289d51feb',
+  '0x9e18a68c137ad5644ca933b878f255eb700c75ec283a4ff0d6adbba289d51feb'
 ];
 const MERKLE_ROOT_WRONG = '0x7219269e7c773394d7f7c5e45d69be27bac95369d1ac44d383f46fee7c3d5731';
 const WRONG_RECIPIENT = '0x973846119C50aB155b2cA776a4361634bc40F720';
@@ -58,7 +58,7 @@ const WRONG_PROOF = [
   '0xbe3bd67c39202038e405b0eb816f7f07e5a316c4d52d4bd96c9e1e35234c21cb',
   '0x1be40c2f461ecc2643a87c4fe5a527d47129fb463b7826c5d63432fd70633e73',
   '0xbd391e6f377c32e18c65b8ef697e31deab8201d1bf15b581723e8dc6e3ffa88a',
-  '0x4734fb658d5adc8416e301a0c9fb3d912fbbabc0acaf6fc1aed94861b0e208e3',
+  '0x4734fb658d5adc8416e301a0c9fb3d912fbbabc0acaf6fc1aed94861b0e208e3'
 ];
 
 describe('TokenDistributor', function () {
@@ -436,11 +436,21 @@ describe('TokenDistributor', function () {
       it('ClaimWithProof should work', async () => {
         const recepientBalanceBefore = await bard.balanceOf(receiver.address);
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        const tx = await tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
-        await expect(tx).to.emit(tokenDistributor, 'ClaimedWithProof').withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
+        const tx = await tokenDistributor.claimWithProof(
+          RECIPIENT_SUI,
+          AMOUNT_SUI,
+          receiver.address,
+          PROOF_SUI,
+          approverProof
+        );
+        await expect(tx)
+          .to.emit(tokenDistributor, 'ClaimedWithProof')
+          .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
         const recipientBalanceAfter = await bard.balanceOf(receiver.address);
         const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
@@ -454,7 +464,9 @@ describe('TokenDistributor', function () {
         const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
         const tx = await tokenDistributor.claimAndStakeWithProof(
@@ -465,7 +477,9 @@ describe('TokenDistributor', function () {
           AMOUNT_SUI / 4n,
           approverProof
         );
-        await expect(tx).to.emit(tokenDistributor, 'ClaimedWithProof').withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
+        await expect(tx)
+          .to.emit(tokenDistributor, 'ClaimedWithProof')
+          .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
         const recipientBalanceAfter = await bard.balanceOf(receiver.address);
         const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
@@ -483,7 +497,9 @@ describe('TokenDistributor', function () {
         const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
         const tx = await tokenDistributor.claimAndStakeWithProof(
@@ -494,7 +510,9 @@ describe('TokenDistributor', function () {
           AMOUNT_SUI,
           approverProof
         );
-        await expect(tx).to.emit(tokenDistributor, 'ClaimedWithProof').withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
+        await expect(tx)
+          .to.emit(tokenDistributor, 'ClaimedWithProof')
+          .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
         const recipientBalanceAfter = await bard.balanceOf(receiver.address);
         const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
@@ -660,48 +678,55 @@ describe('TokenDistributor', function () {
       it('ClaimWithProof should not work after claim end', async () => {
         await time.increaseTo(claimEnd);
 
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'ClaimFinished'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('claimAndStakeWithProof should not work after claim end (partial stake)', async () => {
         await time.increaseTo(claimEnd);
 
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('ClaimWithProof should not work second time', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
         await tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'AlreadyClaimed'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
       it('claimAndStakeWithProof should not work second time', async () => {
         await tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01);
 
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
         await tokenDistributor.claimAndStakeWithProof(
@@ -713,78 +738,83 @@ describe('TokenDistributor', function () {
           approverProof
         );
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
       it('ClaimWithProof should not work if proof is wrong', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'InvalidMerkleProof'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('claimAndStakeWithProof should not work if proof is wrong (partial stake)', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          WRONG_PROOF,
-          AMOUNT_SUI,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            WRONG_PROOF,
+            AMOUNT_SUI,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('claimAndStakeWithProof should not work if amount is 0', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, 0n, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, 0n, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'InvalidAmount'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('claimAndStakeWithProof should not work if amount is 0 (partial stake)', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, 0n, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, 0n, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          0n,
-          receiver.address,
-          PROOF_SUI,
-          0n,
-          approverProof
-          )
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, 0n, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('claimAndStakeWithProof should not work if amount to stake is more than amount to claim', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI + 1n, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI + 1n, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI + 1n,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI + 1n,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
       });
@@ -792,53 +822,61 @@ describe('TokenDistributor', function () {
       it('ClaimWithProof should not work if contract is paused', async () => {
         await tokenDistributor.connect(pauser).pause();
 
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'EnforcedPause'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
       it('claimAndStakeWithProof should not work if contract is paused (partial stake)', async () => {
         await tokenDistributor.connect(pauser).pause();
 
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(approver, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI / 2n,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI / 2n,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
       it('ClaimWithProof should not work if approver proof is wrong', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(signer1, approveHash);
 
-        await expect(tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)).to.revertedWithCustomError(
-          tokenDistributor,
-          'InvalidProof'
-        );
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
       });
 
       it('claimAndStakeWithProof should not work if approver proof is wrong', async () => {
-        const approveHash  = ethers.keccak256(encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address]));
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
         const approverProof = rawSign(signer1, approveHash);
 
-        await expect(tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI / 2n,
-          approverProof
+        await expect(
+          tokenDistributor.claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI / 2n,
+            approverProof
           )
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
       });
