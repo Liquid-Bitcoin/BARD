@@ -76,6 +76,13 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     error InvalidProof();
 
     /*//////////////////////////////////////////////////////////////
+                           CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+    uint256 constant ACCOUNT_TYPE_ADDRESS = uint256(0x1);
+    uint256 constant ACCOUNT_TYPE_BYTES32 = uint256(0x2);
+
+    /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
@@ -317,7 +324,9 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
         // Generate the leaf
         bytes32 leaf = keccak256(
-            bytes.concat(keccak256(abi.encode(_account, _amount)))
+            bytes.concat(
+                keccak256(abi.encode(_account, _amount, ACCOUNT_TYPE_ADDRESS))
+            )
         );
 
         // Verify the merkle proof
@@ -340,7 +349,9 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
         // Generate the leaf
         bytes32 leaf = keccak256(
-            bytes.concat(keccak256(abi.encode(_account, _amount)))
+            bytes.concat(
+                keccak256(abi.encode(_account, _amount, ACCOUNT_TYPE_BYTES32))
+            )
         );
 
         // Verify the merkle proof
