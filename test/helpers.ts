@@ -46,3 +46,10 @@ export class Addressable {
   // @ts-ignore
   private _address: string;
 }
+
+export function rawSign(signer: Signer, message: string): string {
+  const signingKey = new ethers.SigningKey(signer.privateKey);
+  const signature = signingKey.sign(message);
+
+  return signature.serialized;
+}
