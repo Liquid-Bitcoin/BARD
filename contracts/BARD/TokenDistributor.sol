@@ -74,6 +74,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     error WrongAddress();
     error ClaimWithProofNotEnabled();
     error InvalidProof();
+    error OnlyRecipientCanStake();
 
     /*//////////////////////////////////////////////////////////////
                            CONSTANTS
@@ -380,6 +381,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         bytes32[] calldata _merkleProof,
         uint256 _stakeAmount
     ) internal {
+        if (_msgSender() != _account) revert OnlyRecipientCanStake();
         if (address(vault) == address(0)) revert StakingNotEnabled();
         if (_amount < _stakeAmount) revert WrongStakeAmount();
         _validateClaim(_account, _amount, _merkleProof);
@@ -405,6 +407,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 _stakeAmount,
         bytes calldata _proof
     ) internal {
+        if (_msgSender() != _dstAddress) revert OnlyRecipientCanStake();
         if (address(vault) == address(0)) revert StakingNotEnabled();
         if (_amount < _stakeAmount) revert WrongStakeAmount();
         _validateClaimWithProof(

@@ -4,41 +4,45 @@ import { takeSnapshot, time } from '@nomicfoundation/hardhat-toolbox/network-hel
 import { Addressable, deployContract, encode, getSignersWithPrivateKeys, rawSign, Signer } from './helpers';
 import { BARD, ERC4626Mock, TokenDistributor } from '../typechain-types';
 import { SnapshotRestorer } from '@nomicfoundation/hardhat-network-helpers/src/helpers/takeSnapshot';
+import { Wallet } from 'ethers';
 
 const e18 = 10n ** 18n;
 const CLAIM_PERIOD = 100;
-const MERKLE_ROOT = '0x0e37ce7e2ee50ca29b4964664ce8f280857c656e7aa38faa0bf710ccf233d84e';
-const RECIPIENT_01 = '0xa9eD0db00E5C29E7E18A55db159Ea33fb5feA60a';
-const AMOUNT_01 = 2551681628063220224n;
+const MERKLE_ROOT = '0xac7e6f20eefce76d6eeb96af71ae7a94caad413c6f834b92cacb3eec6c6ed1ef';
+const RECIPIENT_01 = '0xd6ed4bdE64af53CeD6933E72B79df02f70877bD3';
+const PRIVATE_KEY_01 = '0x9e9fbd0bd70cdd69b5cff4e077c61ec7a137ff5b9544cd7c2b30afa7d342ac37';
+const AMOUNT_01 = 2551681628063220000n;
 const PROOF_01 = [
-  '0x5a89bddcfefa026274067095c6bb941e7c2bea35f2e481d95b5d4f16c845d6f7',
-  '0x418d3e3b3cbf95055cfe5307bc2e6eaa3433e20091ac124bc0579120c7f4719e',
-  '0x6260fc01b08127a45a931175776f07d8b499a569d7a8139b29515c3d12719f4f',
-  '0x78bfc6a2a7119bac9105306617f74f44d42d281bf957346c35132a1a685deaa9',
-  '0x23fa2f9c652e59571088a0efb911c7446d4c88162e5b16a32cb3dccbe3281c50',
-  '0xd23e955d0b983d9366f1760427f39283137be64fdd1ab1da6e0fca91c261774b',
+  '0xf0d781a0bf90e5b4e2fcad8a74ca33904b04a214e9a457bac85e24e668c9d822',
+  '0x9b6be6350b4add7360922a7f22609864ece3be2ff15b727a98d7fec03604d0ce',
+  '0x4a18458bcb4e68dd3ff12a50fb1ecce174866e98741bf832f83d8ef5e0e6fb40',
+  '0x020a57077e8aa1c914d4654bb1b9fbd6e8fa18efa373826b8ccf0bc0180743e4',
+  '0x133215edb6e3ace58f5d837a2af7c73729728588e7188e6ed68ecdb1e6602c7a',
+  '0x8e28a9831ecf8aff7317305f3c6a8611eb103b1e6fbb2e2bfe17ed9090799b94',
   '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
 ];
-const RECIPIENT_02 = '0xf8587Bfb4d3E0B31029eFA09D595ee6179ddfEAA';
-const AMOUNT_02 = 2524912688505039872n;
+const RECIPIENT_02 = '0x5d8bBCb32553c402E2AAa6dD6892BA487C55D7e1';
+const PRIVATE_KEY_02 = '0xd461c77c054b62193f4f79135a637d088b2ef4f34ea9e416c18c28be9f44cb2d';
+const AMOUNT_02 = 2524912688505040000n;
 const PROOF_02 = [
-  '0xdc8bb3f997d1f79afefa512fd7728a959b43ce2837409be3fb437a8b3c80aa11',
-  '0x418d3e3b3cbf95055cfe5307bc2e6eaa3433e20091ac124bc0579120c7f4719e',
-  '0x6260fc01b08127a45a931175776f07d8b499a569d7a8139b29515c3d12719f4f',
-  '0x78bfc6a2a7119bac9105306617f74f44d42d281bf957346c35132a1a685deaa9',
-  '0x23fa2f9c652e59571088a0efb911c7446d4c88162e5b16a32cb3dccbe3281c50',
-  '0xd23e955d0b983d9366f1760427f39283137be64fdd1ab1da6e0fca91c261774b',
+  '0x5d5755c69121e0cf83e238d1697ccc06518336557dcede0a8be7ad97174f3859',
+  '0x9b6be6350b4add7360922a7f22609864ece3be2ff15b727a98d7fec03604d0ce',
+  '0x4a18458bcb4e68dd3ff12a50fb1ecce174866e98741bf832f83d8ef5e0e6fb40',
+  '0x020a57077e8aa1c914d4654bb1b9fbd6e8fa18efa373826b8ccf0bc0180743e4',
+  '0x133215edb6e3ace58f5d837a2af7c73729728588e7188e6ed68ecdb1e6602c7a',
+  '0x8e28a9831ecf8aff7317305f3c6a8611eb103b1e6fbb2e2bfe17ed9090799b94',
   '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
 ];
-const RECIPIENT_03 = '0xdb6e9e7390e9ACC34619E56eFa48ade01cFF6F12';
-const AMOUNT_03 = 340897722051460992n;
+const RECIPIENT_03 = '0xfCCF270c88Fc8646DFcC8eC6Ec3f1dBbC1ed2832';
+const PRIVATE_KEY_03 = '0x4cfb7f6cecaf0ebf06fd6721cddc8b085b27f242b6139d79e7879e88bd49823f';
+const AMOUNT_03 = 270620421186852000n;
 const PROOF_03 = [
-  '0x4db7033a82e187047dfd02c89ddcea86c683740088140904e28f874c54581c6c',
-  '0xe022a81b31e4d58ea318c9bc11107f8edd2be32d6f48ee9354b3a28a76bfe033',
-  '0xb61f5f4c21a14f88dcc6ed59ad64537245d3faac0e921e7b254dc0ba38f794b2',
-  '0x8bc5acfb470d05300ba1e512a9fe23f7e4aad4a5eae036daae388111764bd7b8',
-  '0xc7d3f4c873d27d0c01aeb08e289af08f3275ad3a3be59d45e0384c53d6eae95e',
-  '0xd23e955d0b983d9366f1760427f39283137be64fdd1ab1da6e0fca91c261774b',
+  '0xc248db4338f729d38a2a748d84e947cde5b38bb0ad759c38e62a9bc44367b73b',
+  '0x36b67301f33af73a4db50eef777d0f298d6688a383e8fef5f71a7253ed958710',
+  '0x8d89c3bfe793c1b178952387f91254d21e3142b385497728ad911eec2c0e15a6',
+  '0x7bee5c11ca276b3ec9bf31fb515a5124f25431a508ef7286349bc1c3b6fea2c2',
+  '0x33896dd9217e724a01318892efe6cb78291aa308248407d7f5004cc84e8f5cba',
+  '0xeb75bd3060d42a5def7b64908db69acdd35612c9c9c037b2a5fd79e24db40e6c',
   '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
 ];
 const RECIPIENT_SUI = '0xead4337a3c8909c6d1bc7be61993ad959158ed034a904ddab9192d7a87de3a05';
@@ -47,7 +51,7 @@ const PROOF_SUI = [
   '0xd0b13d50a78bf77a4e389dc6e1a5106e495b7c7b8c185fa82b1082577544f662',
   '0x550906cbc0a67a87eff47ee912a4d725041743794587c62b863e25f6f2ad28ef',
   '0xe7cb72e2e47605e9b386368ca26bb29d2d775053c196eaa80e4bd8e7c7462ed7',
-  '0xab2d7933f32d9bbb6d8108233a886bd5197013ed89150f075e12dd6e203a9cdf'
+  '0xca9cddefca73d6e66a56fa71cc6bbdb287332c2dec3b08195b921b66dfef1bc8'
 ];
 const MERKLE_ROOT_WRONG = '0x7219269e7c773394d7f7c5e45d69be27bac95369d1ac44d383f46fee7c3d5731';
 const WRONG_RECIPIENT = '0x973846119C50aB155b2cA776a4361634bc40F720';
@@ -67,6 +71,9 @@ describe('TokenDistributor', function () {
     treasury: Signer,
     signer1: Signer,
     signer2: Signer,
+    recipient1: Wallet,
+    recipient2: Wallet,
+    recipient3: Wallet,
     pauser: Signer,
     approver: Signer,
     receiver: Signer;
@@ -79,6 +86,21 @@ describe('TokenDistributor', function () {
 
   before(async function () {
     [deployer, owner, treasury, signer1, signer2, pauser, approver, receiver] = await getSignersWithPrivateKeys();
+    recipient1 = new Wallet(PRIVATE_KEY_01, ethers.provider);
+    await deployer.sendTransaction({
+      to: recipient1.address,
+      value: 10_000_000_000_000_000n
+    });
+    recipient2 = new Wallet(PRIVATE_KEY_02, ethers.provider);
+    await deployer.sendTransaction({
+      to: recipient2.address,
+      value: 10_000_000_000_000_000n
+    });
+    recipient3 = new Wallet(PRIVATE_KEY_03, ethers.provider);
+    await deployer.sendTransaction({
+      to: recipient3.address,
+      value: 10_000_000_000_000_000n
+    });
 
     claimEnd = (await time.latest()) + CLAIM_PERIOD;
 
@@ -320,12 +342,30 @@ describe('TokenDistributor', function () {
         await snapshot.restore();
       });
 
-      it('Claim should work', async () => {
+      it('Claim should work (tx sent by recipient)', async () => {
         const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_01);
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
 
-        const tx = await tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        // const tx = await tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const tx1 = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const tx = await recipient1.sendTransaction(tx1);
         await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_01, AMOUNT_01);
+
+        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_01);
+        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
+
+        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_01);
+        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_01);
+      });
+
+      it('Claim should work (tx sent by 3rd party)', async () => {
+        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_01);
+        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
+
+        // const tx = await tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const txRes = await signer1.sendTransaction(tx);
+        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_01, AMOUNT_01);
 
         const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_01);
         const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
@@ -340,12 +380,13 @@ describe('TokenDistributor', function () {
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'](
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
           RECIPIENT_02,
           AMOUNT_02,
           PROOF_02
         );
-        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_02, AMOUNT_02);
+        const txRes = await recipient2.sendTransaction(tx);
+        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_02, AMOUNT_02);
 
         const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_02);
         const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_02);
@@ -364,13 +405,14 @@ describe('TokenDistributor', function () {
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
           RECIPIENT_03,
           AMOUNT_03,
           PROOF_03,
           AMOUNT_03 / 4n
         );
-        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
+        const txRes = await recipient3.sendTransaction(tx);
+        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
         const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
         const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
@@ -389,13 +431,14 @@ describe('TokenDistributor', function () {
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
           RECIPIENT_03,
           AMOUNT_03,
           PROOF_03,
           AMOUNT_03
         );
-        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
+        const txRes = await recipient3.sendTransaction(tx);
+        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
         const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
         const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
@@ -414,13 +457,14 @@ describe('TokenDistributor', function () {
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const vaultBalanceBefore = await bard.balanceOf(vault.address);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
           RECIPIENT_03,
           AMOUNT_03,
           PROOF_03,
           0n
         );
-        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
+        const txRes = await recipient3.sendTransaction(tx);
+        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
         const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
         const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
@@ -433,7 +477,7 @@ describe('TokenDistributor', function () {
         expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(0n);
       });
 
-      it('ClaimWithProof should work', async () => {
+      it('ClaimWithProof should work (tx sent by recipient)', async () => {
         const recepientBalanceBefore = await bard.balanceOf(receiver.address);
         const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const approveHash = ethers.keccak256(
@@ -441,13 +485,31 @@ describe('TokenDistributor', function () {
         );
         const approverProof = rawSign(approver, approveHash);
 
-        const tx = await tokenDistributor.claimWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          approverProof
+        const tx = await tokenDistributor
+          .connect(receiver)
+          .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
+        await expect(tx)
+          .to.emit(tokenDistributor, 'ClaimedWithProof')
+          .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
+
+        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
+        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
+
+        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_SUI);
+        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
+      });
+
+      it('ClaimWithProof should work (tx sent by 3rd party)', async () => {
+        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
+        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
+        const approverProof = rawSign(approver, approveHash);
+
+        const tx = await tokenDistributor
+          .connect(signer1)
+          .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
         await expect(tx)
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
@@ -469,14 +531,16 @@ describe('TokenDistributor', function () {
         );
         const approverProof = rawSign(approver, approveHash);
 
-        const tx = await tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI / 4n,
-          approverProof
-        );
+        const tx = await tokenDistributor
+          .connect(receiver)
+          .claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI / 4n,
+            approverProof
+          );
         await expect(tx)
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
@@ -502,14 +566,9 @@ describe('TokenDistributor', function () {
         );
         const approverProof = rawSign(approver, approveHash);
 
-        const tx = await tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI,
-          approverProof
-        );
+        const tx = await tokenDistributor
+          .connect(receiver)
+          .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof);
         await expect(tx)
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
@@ -524,6 +583,34 @@ describe('TokenDistributor', function () {
         expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
         expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_SUI);
       });
+
+      it('claimAndStakeWithProof should work (0 stake)', async () => {
+        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
+        const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
+        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
+        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        const tx = await tokenDistributor
+          .connect(receiver)
+          .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, 0n, approverProof);
+        await expect(tx)
+          .to.emit(tokenDistributor, 'ClaimedWithProof')
+          .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
+
+        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
+        const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
+        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
+        const vaultBalanceAfter = await bard.balanceOf(vault.address);
+
+        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_SUI);
+        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(0n);
+        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
+        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(0n);
+      });
     });
 
     describe('Negative cases', function () {
@@ -534,145 +621,170 @@ describe('TokenDistributor', function () {
       it('Claim should not work after claim end', async () => {
         await time.increaseTo(claimEnd);
 
-        await expect(tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01)).to.revertedWithCustomError(
-          tokenDistributor,
-          'ClaimFinished'
-        );
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('ClaimAndStake should not work after claim end (stake all)', async () => {
         await time.increaseTo(claimEnd);
 
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01)
-        ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01
+        );
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('ClaimAndStake should not work after claim end (partial stake)', async () => {
         await time.increaseTo(claimEnd);
 
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
-            RECIPIENT_01,
-            AMOUNT_01,
-            PROOF_01,
-            AMOUNT_01 / 2n
-          )
-        ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01,
+          AMOUNT_01 / 2n
+        );
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('Claim should not work second time', async () => {
-        await tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        await recipient1.sendTransaction(tx);
 
-        await expect(tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01)).to.revertedWithCustomError(
-          tokenDistributor,
-          'AlreadyClaimed'
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
+      });
+
+      it('ClaimAndStake should not work second time', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01
         );
+        await recipient1.sendTransaction(tx);
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
       it('ClaimAndStake should not work second time', async () => {
-        await tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01);
+        const tx1 = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        await recipient1.sendTransaction(tx1);
 
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01)
-        ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
-      });
-
-      it('ClaimAndStake should not work second time', async () => {
-        await tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
-
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
-            RECIPIENT_01,
-            AMOUNT_01,
-            PROOF_01,
-            AMOUNT_01
-          )
-        ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
+        const tx2 = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01,
+          AMOUNT_01
+        );
+        await expect(recipient1.sendTransaction(tx2)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
       it('Claim should not work if proof is wrong', async () => {
-        await expect(tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, WRONG_PROOF)).to.revertedWithCustomError(
-          tokenDistributor,
-          'InvalidMerkleProof'
-        );
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, WRONG_PROOF);
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('ClaimAndStake should not work if proof is wrong (stake all)', async () => {
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, WRONG_PROOF)
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          WRONG_PROOF
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('ClaimAndStake should not work if proof is wrong (partial stake)', async () => {
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
-            RECIPIENT_01,
-            AMOUNT_01,
-            WRONG_PROOF,
-            AMOUNT_01 / 2n
-          )
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          WRONG_PROOF,
+          AMOUNT_01 / 2n
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('Claim should not work if amount is 0', async () => {
-        await expect(tokenDistributor.claim(RECIPIENT_01, 0n, PROOF_01)).to.revertedWithCustomError(
-          tokenDistributor,
-          'InvalidAmount'
-        );
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, 0n, PROOF_01);
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('ClaimAndStake should not work if amount is 0 (stake all)', async () => {
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, 0n, PROOF_01)
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          0n,
+          PROOF_01
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('ClaimAndStake should not work if amount is 0 (partial stake)', async () => {
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](RECIPIENT_01, 0n, PROOF_01, 0n)
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          0n,
+          PROOF_01,
+          0n
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('ClaimAndStake should not work if amount  to stake is more than amount to claim', async () => {
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
-            RECIPIENT_01,
-            AMOUNT_01,
-            PROOF_01,
-            AMOUNT_01 + 1n
-          )
-        ).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01,
+          AMOUNT_01 + 1n
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
       });
 
       it('Claim should not work if contract is paused', async () => {
         await tokenDistributor.connect(pauser).pause();
 
-        await expect(tokenDistributor.claim(RECIPIENT_01, AMOUNT_01, PROOF_01)).to.revertedWithCustomError(
-          tokenDistributor,
-          'EnforcedPause'
-        );
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
       it('ClaimAndStake should not work if contract is paused (stake all)', async () => {
         await tokenDistributor.connect(pauser).pause();
 
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01)
-        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01
+        );
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
       it('ClaimAndStake should not work if contract is paused (partial stake)', async () => {
         await tokenDistributor.connect(pauser).pause();
 
-        await expect(
-          tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'](
-            RECIPIENT_01,
-            AMOUNT_01,
-            PROOF_01,
-            AMOUNT_01 / 2n
-          )
-        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01,
+          AMOUNT_01 / 2n
+        );
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+      });
+
+      it('ClaimAndStake should not work if called by NOT recipient', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01,
+          AMOUNT_01 / 2n
+        );
+
+        await expect(recipient2.sendTransaction(tx)).to.revertedWithCustomError(
+          tokenDistributor,
+          'OnlyRecipientCanStake'
+        );
       });
 
       it('ClaimWithProof should not work after claim end', async () => {
@@ -684,7 +796,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
@@ -697,14 +811,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            PROOF_SUI,
-            AMOUNT_SUI,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
@@ -722,31 +831,19 @@ describe('TokenDistributor', function () {
       });
 
       it('claimAndStakeWithProof should not work second time', async () => {
-        await tokenDistributor['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01);
-
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
         const approverProof = rawSign(approver, approveHash);
 
-        await tokenDistributor.claimAndStakeWithProof(
-          RECIPIENT_SUI,
-          AMOUNT_SUI,
-          receiver.address,
-          PROOF_SUI,
-          AMOUNT_SUI,
-          approverProof
-        );
+        await tokenDistributor
+          .connect(receiver)
+          .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            PROOF_SUI,
-            AMOUNT_SUI,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
@@ -757,7 +854,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
@@ -768,14 +867,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            WRONG_PROOF,
-            AMOUNT_SUI,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, AMOUNT_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
@@ -786,7 +880,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
@@ -797,7 +893,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, 0n, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(RECIPIENT_SUI, 0n, receiver.address, PROOF_SUI, 0n, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
@@ -808,14 +906,16 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            PROOF_SUI,
-            AMOUNT_SUI + 1n,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(
+              RECIPIENT_SUI,
+              AMOUNT_SUI,
+              receiver.address,
+              PROOF_SUI,
+              AMOUNT_SUI + 1n,
+              approverProof
+            )
         ).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
       });
 
@@ -828,7 +928,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
@@ -841,14 +943,16 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(approver, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            PROOF_SUI,
-            AMOUNT_SUI / 2n,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(
+              RECIPIENT_SUI,
+              AMOUNT_SUI,
+              receiver.address,
+              PROOF_SUI,
+              AMOUNT_SUI / 2n,
+              approverProof
+            )
         ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
@@ -859,7 +963,9 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(signer1, approveHash);
 
         await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+          tokenDistributor
+            .connect(receiver)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
       });
 
@@ -870,15 +976,30 @@ describe('TokenDistributor', function () {
         const approverProof = rawSign(signer1, approveHash);
 
         await expect(
-          tokenDistributor.claimAndStakeWithProof(
-            RECIPIENT_SUI,
-            AMOUNT_SUI,
-            receiver.address,
-            PROOF_SUI,
-            AMOUNT_SUI / 2n,
-            approverProof
-          )
+          tokenDistributor
+            .connect(receiver)
+            .claimAndStakeWithProof(
+              RECIPIENT_SUI,
+              AMOUNT_SUI,
+              receiver.address,
+              PROOF_SUI,
+              AMOUNT_SUI / 2n,
+              approverProof
+            )
         ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
+      });
+
+      it('claimAndStakeWithProof should not work if called not by the recipient', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'OnlyRecipientCanStake');
       });
     });
   });
