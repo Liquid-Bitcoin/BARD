@@ -100,10 +100,10 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The vault to deposit token for staking.
-    IERC4626 public VAULT;
+    IERC4626 public vault;
 
     /// @notice The the address of account with pauser right
-    address public PAUSER;
+    address public pauser;
 
     /// @notice Mapping of claimed status.
     mapping(address user => bool claimed) public hasClaimed;
@@ -146,8 +146,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         MERKLE_ROOT = _merkleRoot;
         TOKEN = IERC20(_token);
         CLAIM_END = _claimEnd;
-        VAULT = IERC4626(_vault);
-        PAUSER = _pauser;
+        vault = IERC4626(_vault);
+        pauser = _pauser;
         APPROVER = _approver;
     }
 
@@ -156,7 +156,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
      * PAUSE
      */
     modifier onlyPauser() {
-        if (PAUSER != _msgSender()) {
+        if (pauser != _msgSender()) {
             revert Unauthorized();
         }
         _;
@@ -172,22 +172,22 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         if (newPauser == address(0)) {
             revert WrongAddress();
         }
-        address oldPauser = PAUSER;
-        PAUSER = newPauser;
+        address oldPauser = pauser;
+        pauser = newPauser;
         emit PauserChanged(oldPauser, newPauser);
     }
 
     /**
      * Pause deposit reporting and withdrawal validation.
      */
-    function pause() public onlyPauser {
+    function pause() external onlyPauser {
         _pause();
     }
 
     /**
      * Unpause deposit reporting and withdrawal validation.
      */
-    function unpause() public onlyOwner {
+    function unpause() external onlyOwner {
         _unpause();
     }
 
@@ -297,8 +297,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
     /// @notice Change Vault to stake claimed tokens.
     function changeVault(address _newVault) external onlyOwner {
-        address oldVault = address(VAULT);
-        VAULT = IERC4626(_newVault);
+        address oldVault = address(vault);
+        vault = IERC4626(_newVault);
         emit VaultChanged(oldVault, _newVault);
     }
 
@@ -380,7 +380,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         bytes32[] calldata _merkleProof,
         uint256 _stakeAmount
     ) internal {
-        if (address(VAULT) == address(0)) revert StakingNotEnabled();
+        if (address(vault) == address(0)) revert StakingNotEnabled();
         if (_amount < _stakeAmount) revert WrongStakeAmount();
         _validateClaim(_account, _amount, _merkleProof);
 
@@ -390,8 +390,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
             TOKEN.safeTransfer(_account, _amount - _stakeAmount);
         }
         if (_stakeAmount > 0) {
-            TOKEN.safeIncreaseAllowance(address(VAULT), _stakeAmount);
-            VAULT.deposit(_stakeAmount, _account);
+            TOKEN.safeIncreaseAllowance(address(vault), _stakeAmount);
+            vault.deposit(_stakeAmount, _account);
         }
 
         emit Claimed(_account, _amount);
@@ -405,7 +405,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 _stakeAmount,
         bytes calldata _proof
     ) internal {
-        if (address(VAULT) == address(0)) revert StakingNotEnabled();
+        if (address(vault) == address(0)) revert StakingNotEnabled();
         if (_amount < _stakeAmount) revert WrongStakeAmount();
         _validateClaimWithProof(
             _account,
@@ -421,8 +421,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
             TOKEN.safeTransfer(_dstAddress, _amount - _stakeAmount);
         }
         if (_stakeAmount > 0) {
-            TOKEN.safeIncreaseAllowance(address(VAULT), _stakeAmount);
-            VAULT.deposit(_stakeAmount, _dstAddress);
+            TOKEN.safeIncreaseAllowance(address(vault), _stakeAmount);
+            vault.deposit(_stakeAmount, _dstAddress);
         }
 
         emit ClaimedWithProof(_account, _amount, _dstAddress);

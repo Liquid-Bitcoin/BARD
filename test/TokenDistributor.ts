@@ -218,11 +218,11 @@ describe('TokenDistributor', function () {
       });
 
       it('vault', async function () {
-        expect(await tokenDistributorAlt.VAULT()).to.be.eq(signer1.address);
+        expect(await tokenDistributorAlt.vault()).to.be.eq(signer1.address);
       });
 
       it('pauser', async function () {
-        expect(await tokenDistributorAlt.PAUSER()).to.be.eq(pauser.address);
+        expect(await tokenDistributorAlt.pauser()).to.be.eq(pauser.address);
       });
 
       it('approver', async function () {
@@ -236,18 +236,18 @@ describe('TokenDistributor', function () {
       });
 
       it('changeVault() works if called by the owner', async function () {
-        const oldVault = await tokenDistributor.VAULT();
+        const oldVault = await tokenDistributor.vault();
 
         await expect(await tokenDistributor.connect(owner).changeVault(signer1.address))
           .to.emit(tokenDistributor, 'VaultChanged')
           .withArgs(oldVault, signer1.address);
-        const newVault = await tokenDistributor.VAULT();
+        const newVault = await tokenDistributor.vault();
         expect(newVault).to.be.eq(signer1.address);
 
         await expect(await tokenDistributor.connect(owner).changeVault(ethers.ZeroAddress))
           .to.emit(tokenDistributor, 'VaultChanged')
           .withArgs(signer1.address, ethers.ZeroAddress);
-        expect(await tokenDistributor.VAULT()).to.be.eq(ethers.ZeroAddress);
+        expect(await tokenDistributor.vault()).to.be.eq(ethers.ZeroAddress);
       });
 
       it('changeVault() reverts when called by not owner', async function () {
@@ -263,12 +263,12 @@ describe('TokenDistributor', function () {
       });
 
       it('changePauser() works if called by the owner', async function () {
-        const oldPauser = await tokenDistributor.PAUSER();
+        const oldPauser = await tokenDistributor.pauser();
 
         await expect(await tokenDistributor.connect(owner).changePauser(signer1.address))
           .to.emit(tokenDistributor, 'PauserChanged')
           .withArgs(oldPauser, signer1.address);
-        const newPauser = await tokenDistributor.PAUSER();
+        const newPauser = await tokenDistributor.pauser();
         expect(newPauser).to.be.eq(signer1.address);
       });
 
