@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { takeSnapshot, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { impersonateAccount, takeSnapshot, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { Addressable, deployContract, encode, getSignersWithPrivateKeys, rawSign, Signer } from './helpers';
 import { BARD, ERC4626Mock, TokenDistributor } from '../typechain-types';
 import { SnapshotRestorer } from '@nomicfoundation/hardhat-network-helpers/src/helpers/takeSnapshot';
-import { Wallet } from 'ethers';
+import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
 const e18 = 10n ** 18n;
 const CLAIM_PERIOD = 100;
@@ -71,36 +71,32 @@ describe('TokenDistributor', function () {
     treasury: Signer,
     signer1: Signer,
     signer2: Signer,
-    recipient1: Wallet,
-    recipient2: Wallet,
-    recipient3: Wallet,
+    recipient1: HardhatEthersSigner,
+    recipient2: HardhatEthersSigner,
+    recipient3: HardhatEthersSigner,
     pauser: Signer,
     approver: Signer,
     receiver: Signer;
   let bard: BARD & Addressable;
   let tokenDistributor: TokenDistributor & Addressable;
   let snapshot: SnapshotRestorer;
-  let deployTimestamp: number;
   let claimEnd: number;
   let vault: ERC4626Mock & Addressable;
 
   before(async function () {
     [deployer, owner, treasury, signer1, signer2, pauser, approver, receiver] = await getSignersWithPrivateKeys();
-    recipient1 = new Wallet(PRIVATE_KEY_01, ethers.provider);
-    await deployer.sendTransaction({
-      to: recipient1.address,
-      value: 10_000_000_000_000_000n
-    });
-    recipient2 = new Wallet(PRIVATE_KEY_02, ethers.provider);
-    await deployer.sendTransaction({
-      to: recipient2.address,
-      value: 10_000_000_000_000_000n
-    });
-    recipient3 = new Wallet(PRIVATE_KEY_03, ethers.provider);
-    await deployer.sendTransaction({
-      to: recipient3.address,
-      value: 10_000_000_000_000_000n
-    });
+
+    await impersonateAccount(RECIPIENT_01);
+    recipient1 = await ethers.getSigner(RECIPIENT_01);
+    await deployer.sendTransaction({ to: recipient1.address, value: e18 });
+
+    await impersonateAccount(RECIPIENT_02);
+    recipient2 = await ethers.getSigner(RECIPIENT_02);
+    await deployer.sendTransaction({ to: recipient2.address, value: e18 });
+
+    await impersonateAccount(RECIPIENT_03);
+    recipient3 = await ethers.getSigner(RECIPIENT_03);
+    await deployer.sendTransaction({ to: recipient3.address, value: e18 });
 
     claimEnd = (await time.latest()) + CLAIM_PERIOD;
 
@@ -120,7 +116,6 @@ describe('TokenDistributor', function () {
     await bard.connect(treasury).transfer(tokenDistributor.address, 1_000_000n * e18);
 
     snapshot = await takeSnapshot();
-    deployTimestamp = await time.latest();
   });
 
   describe('Deployment process', function () {
@@ -336,6 +331,91 @@ describe('TokenDistributor', function () {
     });
   });
 
+  describe('Pause', function () {
+    before(async function () {
+      await snapshot.restore();
+    });
+
+    it('pause: reverts when called by not a pauser', async function () {
+      await expect(tokenDistributor.connect(signer1).pause()).to.revertedWithCustomError(
+        tokenDistributor,
+        'Unauthorized'
+      );
+    });
+
+    it('pause: pauser can pause', async function () {
+      await tokenDistributor.connect(pauser).pause();
+      expect(await tokenDistributor.paused()).to.be.true;
+    });
+
+    it('Claim should not work if contract is paused', async () => {
+      await expect(
+        tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01)
+      ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+    });
+
+    it('ClaimAndStake should not work if contract is paused (stake all)', async () => {
+      await expect(
+        tokenDistributor
+          .connect(recipient1)
+          ['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_01, AMOUNT_01, PROOF_01)
+      ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+    });
+
+    it('ClaimAndStake should not work if contract is paused (partial stake)', async () => {
+      await expect(
+        tokenDistributor
+          .connect(recipient1)
+          ['claimAndStake(address,uint256,bytes32[],uint256)'](RECIPIENT_01, AMOUNT_01, PROOF_01, AMOUNT_01 / 4n)
+      ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+    });
+
+    it('ClaimWithProof should not work if contract is paused', async () => {
+      const approveHash = ethers.keccak256(
+        encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+      );
+      const approverProof = rawSign(approver, approveHash);
+
+      await expect(
+        tokenDistributor
+          .connect(receiver)
+          .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+      ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+    });
+
+    it('claimAndStakeWithProof should not work if contract is paused', async () => {
+      const approveHash = ethers.keccak256(
+        encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+      );
+      const approverProof = rawSign(approver, approveHash);
+
+      await expect(
+        tokenDistributor
+          .connect(receiver)
+          .claimAndStakeWithProof(
+            RECIPIENT_SUI,
+            AMOUNT_SUI,
+            receiver.address,
+            PROOF_SUI,
+            AMOUNT_SUI / 2n,
+            approverProof
+          )
+      ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
+    });
+
+    it('unpause: reverts when called by not an owner', async function () {
+      await expect(tokenDistributor.connect(pauser).unpause()).to.revertedWithCustomError(
+        tokenDistributor,
+        'OwnableUnauthorizedAccount'
+      );
+    });
+
+    it('unpause: owner can unpause', async function () {
+      await tokenDistributor.connect(owner).unpause();
+      expect(await tokenDistributor.paused()).to.be.false;
+    });
+  });
+
   describe('Claim and stake', function () {
     describe('Positive cases', function () {
       beforeEach(async function () {
@@ -343,143 +423,76 @@ describe('TokenDistributor', function () {
       });
 
       it('Claim should work (tx sent by recipient)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_01);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-
-        // const tx = await tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
-        const tx1 = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
-        const tx = await recipient1.sendTransaction(tx1);
+        const tx = await tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
         await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_01, AMOUNT_01);
 
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_01);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_01);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_01);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_01, AMOUNT_01);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_01);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_01)).to.be.true;
       });
 
       it('Claim should work (tx sent by 3rd party)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_01);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
+        const tx = await tokenDistributor.connect(signer1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_01, AMOUNT_01);
 
-        // const tx = await tokenDistributor.connect(recipient1).claim(RECIPIENT_01, AMOUNT_01, PROOF_01);
-        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
-        const txRes = await signer1.sendTransaction(tx);
-        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_01, AMOUNT_01);
-
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_01);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_01);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_01);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_01, AMOUNT_01);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_01);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_01)).to.be.true;
       });
 
       it('ClaimAndStake should work (stake all)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_02);
-        const recepientSharesBalanceBefore = await vault.balanceOf(RECIPIENT_02);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+        const tx = await tokenDistributor
+          .connect(recipient2)
+          ['claimAndStake(address,uint256,bytes32[])'](RECIPIENT_02, AMOUNT_02, PROOF_02);
+        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_02, AMOUNT_02);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
-          RECIPIENT_02,
-          AMOUNT_02,
-          PROOF_02
-        );
-        const txRes = await recipient2.sendTransaction(tx);
-        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_02, AMOUNT_02);
-
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_02);
-        const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_02);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(0n);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(AMOUNT_02);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_02);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_02);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_02);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_02, 0n);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, AMOUNT_02);
+        await expect(tx).to.changeTokenBalance(vault, RECIPIENT_02, AMOUNT_02);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_02)).to.be.true;
       });
 
       it('ClaimAndStake should work (partial)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceBefore = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+        const tx = await tokenDistributor
+          .connect(recipient3)
+          ['claimAndStake(address,uint256,bytes32[],uint256)'](RECIPIENT_03, AMOUNT_03, PROOF_03, AMOUNT_03 / 4n);
+        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
-          RECIPIENT_03,
-          AMOUNT_03,
-          PROOF_03,
-          AMOUNT_03 / 4n
-        );
-        const txRes = await recipient3.sendTransaction(tx);
-        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
-
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal((AMOUNT_03 * 3n) / 4n);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(AMOUNT_03 / 4n);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_03);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_03 / 4n);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_03, (AMOUNT_03 * 3n) / 4n);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, AMOUNT_03 / 4n);
+        await expect(tx).to.changeTokenBalance(vault, RECIPIENT_03, AMOUNT_03 / 4n);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_03)).to.be.true;
       });
 
       it('ClaimAndStake should work (partial but all)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceBefore = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+        const tx = await tokenDistributor
+          .connect(recipient3)
+          ['claimAndStake(address,uint256,bytes32[],uint256)'](RECIPIENT_03, AMOUNT_03, PROOF_03, AMOUNT_03);
+        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
-          RECIPIENT_03,
-          AMOUNT_03,
-          PROOF_03,
-          AMOUNT_03
-        );
-        const txRes = await recipient3.sendTransaction(tx);
-        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
-
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(0n);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(AMOUNT_03);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_03);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_03, 0n);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(vault, RECIPIENT_03, AMOUNT_03);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_03)).to.be.true;
       });
 
       it('ClaimAndStake should work (partial but zero stake)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceBefore = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+        const tx = await tokenDistributor
+          .connect(recipient3)
+          ['claimAndStake(address,uint256,bytes32[],uint256)'](RECIPIENT_03, AMOUNT_03, PROOF_03, 0n);
+        await expect(tx).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
 
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
-          RECIPIENT_03,
-          AMOUNT_03,
-          PROOF_03,
-          0n
-        );
-        const txRes = await recipient3.sendTransaction(tx);
-        await expect(txRes).to.emit(tokenDistributor, 'Claimed').withArgs(RECIPIENT_03, AMOUNT_03);
-
-        const recipientBalanceAfter = await bard.balanceOf(RECIPIENT_03);
-        const recepientSharesBalanceAfter = await vault.balanceOf(RECIPIENT_03);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_03);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(0n);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_03);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(0n);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(bard, RECIPIENT_03, AMOUNT_03);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, 0n);
+        await expect(tx).to.changeTokenBalance(vault, RECIPIENT_03, 0n);
+        expect(await tokenDistributor.hasClaimed(RECIPIENT_03)).to.be.true;
       });
 
       it('ClaimWithProof should work (tx sent by recipient)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
@@ -492,16 +505,11 @@ describe('TokenDistributor', function () {
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
-        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_SUI);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
+        await expect(tx).changeTokenBalance(bard, receiver, AMOUNT_SUI);
+        await expect(tx).changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_SUI);
       });
 
       it('ClaimWithProof should work (tx sent by 3rd party)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
@@ -514,18 +522,11 @@ describe('TokenDistributor', function () {
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
-        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_SUI);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
+        await expect(tx).changeTokenBalance(bard, receiver, AMOUNT_SUI);
+        await expect(tx).changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_SUI);
       });
 
-      it('claimAndStakeWithProof should work (partial)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+      it('claimAndStakeWithProof claim all but stake partially', async () => {
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
@@ -545,22 +546,13 @@ describe('TokenDistributor', function () {
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
-        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal((AMOUNT_SUI * 3n) / 4n);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(AMOUNT_SUI / 4n);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_SUI / 4n);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(bard, receiver, (AMOUNT_SUI * 3n) / 4n);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, AMOUNT_SUI / 4n);
+        await expect(tx).to.changeTokenBalance(vault, receiver, AMOUNT_SUI / 4n);
       });
 
-      it('claimAndStakeWithProof should work (partial but all)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+      it('claimAndStakeWithProof claim and stake all', async () => {
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
@@ -573,22 +565,13 @@ describe('TokenDistributor', function () {
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
-        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(0n);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(AMOUNT_SUI);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(bard, receiver, 0n);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(vault, receiver, AMOUNT_SUI);
       });
 
-      it('claimAndStakeWithProof should work (0 stake)', async () => {
-        const recepientBalanceBefore = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceBefore = await vault.balanceOf(receiver.address);
-        const tdBalanceBefore = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceBefore = await bard.balanceOf(vault.address);
+      it('claimAndStakeWithProof claim all and stake nothing', async () => {
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
         );
@@ -601,15 +584,10 @@ describe('TokenDistributor', function () {
           .to.emit(tokenDistributor, 'ClaimedWithProof')
           .withArgs(RECIPIENT_SUI, AMOUNT_SUI, receiver.address);
 
-        const recipientBalanceAfter = await bard.balanceOf(receiver.address);
-        const recepientSharesBalanceAfter = await vault.balanceOf(receiver.address);
-        const tdBalanceAfter = await bard.balanceOf(tokenDistributor.address);
-        const vaultBalanceAfter = await bard.balanceOf(vault.address);
-
-        expect(recipientBalanceAfter - recepientBalanceBefore).to.equal(AMOUNT_SUI);
-        expect(recepientSharesBalanceAfter - recepientSharesBalanceBefore).to.equal(0n);
-        expect(tdBalanceAfter - tdBalanceBefore).to.equal(-AMOUNT_SUI);
-        expect(vaultBalanceAfter - vaultBalanceBefore).to.equal(0n);
+        await expect(tx).to.changeTokenBalance(bard, tokenDistributor.address, -AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(bard, receiver, AMOUNT_SUI);
+        await expect(tx).to.changeTokenBalance(bard, vault.address, 0n);
+        await expect(tx).to.changeTokenBalance(vault, receiver, 0n);
       });
     });
 
@@ -626,6 +604,127 @@ describe('TokenDistributor', function () {
         await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
+      it('Claim should not work second time', async () => {
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
+        await recipient1.sendTransaction(tx);
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
+      });
+
+      it('Claim should not work if amount is 0', async () => {
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, 0n, PROOF_01);
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
+      });
+
+      it('Claim should not work if proof is wrong', async () => {
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, WRONG_PROOF);
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
+      });
+
+      it('Claim should not work if proof is empty', async () => {
+        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, []);
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EmptyMerkleProof');
+      });
+
+      it('ClaimWithProof should not work after claim end', async () => {
+        await time.increaseTo(claimEnd);
+
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
+      });
+
+      it('ClaimWithProof should not work second time', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
+
+        await expect(
+          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
+      });
+
+      it('ClaimWithProof should not work if proof is wrong', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
+      });
+
+      it('ClaimWithProof should not work if proof is empty', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, [], approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'EmptyMerkleProof');
+      });
+
+      it('ClaimWithProof should not work if approver proof is wrong', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(signer1, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
+      });
+
+      it('ClaimWithProof should not work if approver proof is not enough', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI - 1n, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
+      });
+
+      it('ClaimWithProof should not work if approver proof is for different receiver', async () => {
+        const approveHash = ethers.keccak256(
+          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
+        );
+        const approverProof = rawSign(approver, approveHash);
+
+        await expect(
+          tokenDistributor
+            .connect(signer1)
+            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, signer1.address, PROOF_SUI, approverProof)
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
+      });
+
+      it('ClaimWithProof should not work if approver proof is 0x', async () => {
+        await expect(
+          tokenDistributor.connect(signer1).claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, '0x')
+        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
+      });
+
       it('ClaimAndStake should not work after claim end (stake all)', async () => {
         await time.increaseTo(claimEnd);
 
@@ -636,6 +735,35 @@ describe('TokenDistributor', function () {
         );
 
         await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
+      });
+
+      it('ClaimAndStake should not work second time', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          PROOF_01
+        );
+        await recipient1.sendTransaction(tx);
+
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
+      });
+
+      it('ClaimAndStake should not work if amount is 0 (stake all)', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          0n,
+          PROOF_01
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
+      });
+
+      it('ClaimAndStake should not work if proof is wrong (stake all)', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+          RECIPIENT_01,
+          AMOUNT_01,
+          WRONG_PROOF
+        );
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('ClaimAndStake should not work after claim end (partial stake)', async () => {
@@ -651,24 +779,6 @@ describe('TokenDistributor', function () {
         await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
-      it('Claim should not work second time', async () => {
-        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
-        await recipient1.sendTransaction(tx);
-
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
-      });
-
-      it('ClaimAndStake should not work second time', async () => {
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
-          RECIPIENT_01,
-          AMOUNT_01,
-          PROOF_01
-        );
-        await recipient1.sendTransaction(tx);
-
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
-      });
-
       it('ClaimAndStake should not work second time', async () => {
         const tx1 = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
         await recipient1.sendTransaction(tx1);
@@ -682,18 +792,14 @@ describe('TokenDistributor', function () {
         await expect(recipient1.sendTransaction(tx2)).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
       });
 
-      it('Claim should not work if proof is wrong', async () => {
-        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, WRONG_PROOF);
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
-      });
-
-      it('ClaimAndStake should not work if proof is wrong (stake all)', async () => {
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
+      it('ClaimAndStake should not work if amount is 0 (partial stake)', async () => {
+        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
           RECIPIENT_01,
-          AMOUNT_01,
-          WRONG_PROOF
+          0n,
+          PROOF_01,
+          0n
         );
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
+        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
       });
 
       it('ClaimAndStake should not work if proof is wrong (partial stake)', async () => {
@@ -706,31 +812,7 @@ describe('TokenDistributor', function () {
         await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
-      it('Claim should not work if amount is 0', async () => {
-        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, 0n, PROOF_01);
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
-      });
-
-      it('ClaimAndStake should not work if amount is 0 (stake all)', async () => {
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
-          RECIPIENT_01,
-          0n,
-          PROOF_01
-        );
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
-      });
-
-      it('ClaimAndStake should not work if amount is 0 (partial stake)', async () => {
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
-          RECIPIENT_01,
-          0n,
-          PROOF_01,
-          0n
-        );
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'InvalidAmount');
-      });
-
-      it('ClaimAndStake should not work if amount  to stake is more than amount to claim', async () => {
+      it('ClaimAndStake should not work if amount to stake is more than amount to claim', async () => {
         const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
           RECIPIENT_01,
           AMOUNT_01,
@@ -738,39 +820,6 @@ describe('TokenDistributor', function () {
           AMOUNT_01 + 1n
         );
         await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
-      });
-
-      it('Claim should not work if contract is paused', async () => {
-        await tokenDistributor.connect(pauser).pause();
-
-        const tx = await tokenDistributor.claim.populateTransaction(RECIPIENT_01, AMOUNT_01, PROOF_01);
-
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
-      });
-
-      it('ClaimAndStake should not work if contract is paused (stake all)', async () => {
-        await tokenDistributor.connect(pauser).pause();
-
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[])'].populateTransaction(
-          RECIPIENT_01,
-          AMOUNT_01,
-          PROOF_01
-        );
-
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
-      });
-
-      it('ClaimAndStake should not work if contract is paused (partial stake)', async () => {
-        await tokenDistributor.connect(pauser).pause();
-
-        const tx = await tokenDistributor['claimAndStake(address,uint256,bytes32[],uint256)'].populateTransaction(
-          RECIPIENT_01,
-          AMOUNT_01,
-          PROOF_01,
-          AMOUNT_01 / 2n
-        );
-
-        await expect(recipient1.sendTransaction(tx)).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
       });
 
       it('ClaimAndStake should not work if called by NOT recipient', async () => {
@@ -785,21 +834,6 @@ describe('TokenDistributor', function () {
           tokenDistributor,
           'OnlyRecipientCanStake'
         );
-      });
-
-      it('ClaimWithProof should not work after claim end', async () => {
-        await time.increaseTo(claimEnd);
-
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(approver, approveHash);
-
-        await expect(
-          tokenDistributor
-            .connect(receiver)
-            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
-        ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
       it('claimAndStakeWithProof should not work after claim end (partial stake)', async () => {
@@ -817,19 +851,6 @@ describe('TokenDistributor', function () {
         ).to.revertedWithCustomError(tokenDistributor, 'ClaimFinished');
       });
 
-      it('ClaimWithProof should not work second time', async () => {
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(approver, approveHash);
-
-        await tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof);
-
-        await expect(
-          tokenDistributor.claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
-        ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
-      });
-
       it('claimAndStakeWithProof should not work second time', async () => {
         const approveHash = ethers.keccak256(
           encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
@@ -845,19 +866,6 @@ describe('TokenDistributor', function () {
             .connect(receiver)
             .claimAndStakeWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, AMOUNT_SUI, approverProof)
         ).to.revertedWithCustomError(tokenDistributor, 'AlreadyClaimed');
-      });
-
-      it('ClaimWithProof should not work if proof is wrong', async () => {
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(approver, approveHash);
-
-        await expect(
-          tokenDistributor
-            .connect(receiver)
-            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidMerkleProof');
       });
 
       it('claimAndStakeWithProof should not work if proof is wrong (partial stake)', async () => {
@@ -917,56 +925,6 @@ describe('TokenDistributor', function () {
               approverProof
             )
         ).to.revertedWithCustomError(tokenDistributor, 'WrongStakeAmount');
-      });
-
-      it('ClaimWithProof should not work if contract is paused', async () => {
-        await tokenDistributor.connect(pauser).pause();
-
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(approver, approveHash);
-
-        await expect(
-          tokenDistributor
-            .connect(receiver)
-            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, WRONG_PROOF, approverProof)
-        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
-      });
-
-      it('claimAndStakeWithProof should not work if contract is paused (partial stake)', async () => {
-        await tokenDistributor.connect(pauser).pause();
-
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(approver, approveHash);
-
-        await expect(
-          tokenDistributor
-            .connect(receiver)
-            .claimAndStakeWithProof(
-              RECIPIENT_SUI,
-              AMOUNT_SUI,
-              receiver.address,
-              PROOF_SUI,
-              AMOUNT_SUI / 2n,
-              approverProof
-            )
-        ).to.revertedWithCustomError(tokenDistributor, 'EnforcedPause');
-      });
-
-      it('ClaimWithProof should not work if approver proof is wrong', async () => {
-        const approveHash = ethers.keccak256(
-          encode(['bytes32', 'uint256', 'address'], [RECIPIENT_SUI, AMOUNT_SUI, receiver.address])
-        );
-        const approverProof = rawSign(signer1, approveHash);
-
-        await expect(
-          tokenDistributor
-            .connect(receiver)
-            .claimWithProof(RECIPIENT_SUI, AMOUNT_SUI, receiver.address, PROOF_SUI, approverProof)
-        ).to.revertedWithCustomError(tokenDistributor, 'InvalidProof');
       });
 
       it('claimAndStakeWithProof should not work if approver proof is wrong', async () => {
