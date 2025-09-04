@@ -113,7 +113,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     mapping(bytes32 user => bool claimed) public hasClaimedByProof;
 
     /// @notice The address that acts as and approved for claiming tokens to arbitrary address.
-    address public APPROVER;
+    address public approver;
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -149,7 +149,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         CLAIM_END = _claimEnd;
         vault = IERC4626(_vault);
         pauser = _pauser;
-        APPROVER = _approver;
+        approver = _approver;
     }
 
     /// MODIFIER ///
@@ -305,8 +305,8 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
     /// @notice Change Approver to claim on an arbitrary address
     function changeApprover(address _newApprover) external onlyOwner {
-        address oldApprover = address(APPROVER);
-        APPROVER = _newApprover;
+        address oldApprover = address(approver);
+        approver = _newApprover;
         emit ApproverChanged(oldApprover, _newApprover);
     }
 
@@ -346,7 +346,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         if (hasClaimedByProof[_account]) revert AlreadyClaimed();
         if (_merkleProof.length == 0) revert EmptyMerkleProof();
         if (block.timestamp >= CLAIM_END) revert ClaimFinished();
-        if (APPROVER == address(0)) revert ClaimWithProofNotEnabled();
+        if (approver == address(0)) revert ClaimWithProofNotEnabled();
 
         // Generate the leaf
         bytes32 leaf = keccak256(
@@ -370,7 +370,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
             revert InvalidProof();
         }
         // if signer doesn't match consider data invalid
-        if (signer != APPROVER) {
+        if (signer != approver) {
             revert InvalidProof();
         }
     }

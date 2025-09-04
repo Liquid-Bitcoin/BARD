@@ -243,7 +243,7 @@ describe('TokenDistributor', function () {
       });
 
       it('approver', async function () {
-        expect(await tokenDistributorAlt.APPROVER()).to.be.eq(approver.address);
+        expect(await tokenDistributorAlt.approver()).to.be.eq(approver.address);
       });
     });
 
@@ -309,18 +309,18 @@ describe('TokenDistributor', function () {
       });
 
       it('changeApprover() works if called by the owner', async function () {
-        const oldApprover = await tokenDistributor.APPROVER();
+        const oldApprover = await tokenDistributor.approver();
 
         await expect(await tokenDistributor.connect(owner).changeApprover(signer1.address))
           .to.emit(tokenDistributor, 'ApproverChanged')
           .withArgs(oldApprover, signer1.address);
-        const newApprover = await tokenDistributor.APPROVER();
+        const newApprover = await tokenDistributor.approver();
         expect(newApprover).to.be.eq(signer1.address);
 
         await expect(await tokenDistributor.connect(owner).changeApprover(ethers.ZeroAddress))
           .to.emit(tokenDistributor, 'ApproverChanged')
           .withArgs(signer1.address, ethers.ZeroAddress);
-        expect(await tokenDistributor.APPROVER()).to.be.eq(ethers.ZeroAddress);
+        expect(await tokenDistributor.approver()).to.be.eq(ethers.ZeroAddress);
       });
 
       it('changeApprover() reverts when called by not owner', async function () {
