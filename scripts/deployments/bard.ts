@@ -31,15 +31,16 @@ task('deploy-bard-distributor', 'Deploys the BARD token distributor contract (no
   .addParam('claimEnd', 'The Claim end timestamp')
   .addParam('vault', 'The address of the vault to stake claimed tokens', ethers.ZeroAddress)
   .addParam('pauser', 'The address with right to pause token distributor', 'self')
+  .addParam('approver', 'The address with right to approve claim on arbotrary ETH address', 'self')
   .setAction(async (taskArgs, hre) => {
-    let { ledgerNetwork, admin: adminArg, token, merkleRoot, claimEnd, vault, pauser } = taskArgs;
+    let { ledgerNetwork, admin: adminArg, token, merkleRoot, claimEnd, vault, pauser, approver } = taskArgs;
 
     const [signer] = await hre.ethers.getSigners();
     const admin = hre.ethers.isAddress(adminArg) ? adminArg : await signer.getAddress();
 
     await deploy(
       'TokenDistributor',
-      [merkleRoot, token, admin, claimEnd, vault, pauser],
+      [merkleRoot, token, admin, claimEnd, vault, pauser, approver],
       'contracts/BARD/TokenDistributor.sol:TokenDistributor',
       hre
     );
