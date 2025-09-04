@@ -325,9 +325,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
         // Generate the leaf
         bytes32 leaf = keccak256(
-            bytes.concat(
-                keccak256(abi.encode(_account, _amount, ACCOUNT_TYPE_ADDRESS))
-            )
+            abi.encode(_account, _amount, ACCOUNT_TYPE_ADDRESS)
         );
 
         // Verify the merkle proof
@@ -350,9 +348,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
 
         // Generate the leaf
         bytes32 leaf = keccak256(
-            bytes.concat(
-                keccak256(abi.encode(_account, _amount, ACCOUNT_TYPE_BYTES32))
-            )
+            abi.encode(_account, _amount, ACCOUNT_TYPE_BYTES32)
         );
 
         // Verify the merkle proof
