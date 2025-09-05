@@ -8,50 +8,50 @@ import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
 const e18 = 10n ** 18n;
 const CLAIM_PERIOD = 100;
-const MERKLE_ROOT = '0xac7e6f20eefce76d6eeb96af71ae7a94caad413c6f834b92cacb3eec6c6ed1ef';
+const MERKLE_ROOT = '0xc2df71dfd1eaae3f179886fd022df8e0242f1a13bb83314a15ebac1ea91bd5f3';
 const RECIPIENT_01 = '0xd6ed4bdE64af53CeD6933E72B79df02f70877bD3';
 const PRIVATE_KEY_01 = '0x9e9fbd0bd70cdd69b5cff4e077c61ec7a137ff5b9544cd7c2b30afa7d342ac37';
 const AMOUNT_01 = 2551681628063220000n;
 const PROOF_01 = [
-  '0xf0d781a0bf90e5b4e2fcad8a74ca33904b04a214e9a457bac85e24e668c9d822',
-  '0x9b6be6350b4add7360922a7f22609864ece3be2ff15b727a98d7fec03604d0ce',
-  '0x4a18458bcb4e68dd3ff12a50fb1ecce174866e98741bf832f83d8ef5e0e6fb40',
-  '0x020a57077e8aa1c914d4654bb1b9fbd6e8fa18efa373826b8ccf0bc0180743e4',
-  '0x133215edb6e3ace58f5d837a2af7c73729728588e7188e6ed68ecdb1e6602c7a',
-  '0x8e28a9831ecf8aff7317305f3c6a8611eb103b1e6fbb2e2bfe17ed9090799b94',
-  '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
+  '0x528017d9d3f91c7bdc770b190c8939a6e05551f0875f42d09ed364386bdc1621',
+  '0xe3c675a4aac3e75ebe16494b2839670580404301772c28a6c35d2accfd84021d',
+  '0x7a0303b88f83f7a4eb12edb78cc2776465fb87020a0120d0f1db101adf2a9152',
+  '0x4d63837fc7a45f556782ff4c2957437422d51ea2f079025303ad5940c49958ee',
+  '0xd5ed4bb95a727336a841d3a281a7fdc8130650078fdddc0c27a916a9217de1b4',
+  '0x160169a57044b5bf8e0ac6b2957df0213d7d599981ac66e20b20474d5a6e975b',
+  '0x50bce33520b01f63ed370ca58d9d29059da5aff92157b8867669e7186cf64aa1'
 ];
 const RECIPIENT_02 = '0x5d8bBCb32553c402E2AAa6dD6892BA487C55D7e1';
 const PRIVATE_KEY_02 = '0xd461c77c054b62193f4f79135a637d088b2ef4f34ea9e416c18c28be9f44cb2d';
 const AMOUNT_02 = 2524912688505040000n;
 const PROOF_02 = [
-  '0x5d5755c69121e0cf83e238d1697ccc06518336557dcede0a8be7ad97174f3859',
-  '0x9b6be6350b4add7360922a7f22609864ece3be2ff15b727a98d7fec03604d0ce',
-  '0x4a18458bcb4e68dd3ff12a50fb1ecce174866e98741bf832f83d8ef5e0e6fb40',
-  '0x020a57077e8aa1c914d4654bb1b9fbd6e8fa18efa373826b8ccf0bc0180743e4',
-  '0x133215edb6e3ace58f5d837a2af7c73729728588e7188e6ed68ecdb1e6602c7a',
-  '0x8e28a9831ecf8aff7317305f3c6a8611eb103b1e6fbb2e2bfe17ed9090799b94',
-  '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
+  '0x935c5e7424bc2e1d20970565c99ee55f651d2ceec33c95b3afcd55bbbe2d7e6f',
+  '0xe3c675a4aac3e75ebe16494b2839670580404301772c28a6c35d2accfd84021d',
+  '0x7a0303b88f83f7a4eb12edb78cc2776465fb87020a0120d0f1db101adf2a9152',
+  '0x4d63837fc7a45f556782ff4c2957437422d51ea2f079025303ad5940c49958ee',
+  '0xd5ed4bb95a727336a841d3a281a7fdc8130650078fdddc0c27a916a9217de1b4',
+  '0x160169a57044b5bf8e0ac6b2957df0213d7d599981ac66e20b20474d5a6e975b',
+  '0x50bce33520b01f63ed370ca58d9d29059da5aff92157b8867669e7186cf64aa1'
 ];
 const RECIPIENT_03 = '0xfCCF270c88Fc8646DFcC8eC6Ec3f1dBbC1ed2832';
 const PRIVATE_KEY_03 = '0x4cfb7f6cecaf0ebf06fd6721cddc8b085b27f242b6139d79e7879e88bd49823f';
 const AMOUNT_03 = 270620421186852000n;
 const PROOF_03 = [
-  '0xc248db4338f729d38a2a748d84e947cde5b38bb0ad759c38e62a9bc44367b73b',
-  '0x36b67301f33af73a4db50eef777d0f298d6688a383e8fef5f71a7253ed958710',
-  '0x8d89c3bfe793c1b178952387f91254d21e3142b385497728ad911eec2c0e15a6',
-  '0x7bee5c11ca276b3ec9bf31fb515a5124f25431a508ef7286349bc1c3b6fea2c2',
-  '0x33896dd9217e724a01318892efe6cb78291aa308248407d7f5004cc84e8f5cba',
-  '0xeb75bd3060d42a5def7b64908db69acdd35612c9c9c037b2a5fd79e24db40e6c',
-  '0x409b6003bd80e8c056f2d57c53396bbd04725e069d441a6c10f66c0b58aa8907'
+  '0x4000d61b32adcbe38b64c2e824d47849657f8fbb6eaace907cf551edc87c9101',
+  '0x9131df5418d3eabe99a16c5a9a341829ede095b6cef58a6de13079d4a5bf9754',
+  '0x7a0303b88f83f7a4eb12edb78cc2776465fb87020a0120d0f1db101adf2a9152',
+  '0x4d63837fc7a45f556782ff4c2957437422d51ea2f079025303ad5940c49958ee',
+  '0xd5ed4bb95a727336a841d3a281a7fdc8130650078fdddc0c27a916a9217de1b4',
+  '0x160169a57044b5bf8e0ac6b2957df0213d7d599981ac66e20b20474d5a6e975b',
+  '0x50bce33520b01f63ed370ca58d9d29059da5aff92157b8867669e7186cf64aa1'
 ];
 const RECIPIENT_SUI = '0xead4337a3c8909c6d1bc7be61993ad959158ed034a904ddab9192d7a87de3a05';
-const AMOUNT_SUI = 5831691959478484n;
+const AMOUNT_SUI = 5831691959478484000n;
 const PROOF_SUI = [
-  '0xd0b13d50a78bf77a4e389dc6e1a5106e495b7c7b8c185fa82b1082577544f662',
-  '0x550906cbc0a67a87eff47ee912a4d725041743794587c62b863e25f6f2ad28ef',
-  '0xe7cb72e2e47605e9b386368ca26bb29d2d775053c196eaa80e4bd8e7c7462ed7',
-  '0xca9cddefca73d6e66a56fa71cc6bbdb287332c2dec3b08195b921b66dfef1bc8'
+  '0x926b8e81757bdfedede7c634d1ce60db218cd308af9415efb274e338f1e8beee',
+  '0x74990b9a32383a102fac2843fef1d2bf87f41846b4289d5ee99085e1c2930054',
+  '0xb437abd2704cf9717b1ca72df07c9d9c20000ef7442df9cd56be901592f34aa1',
+  '0x2c6005a9de4e327abed1f60ee4b739a1b713d7e58b137f4848a882862b8bff83'
 ];
 const MERKLE_ROOT_WRONG = '0x7219269e7c773394d7f7c5e45d69be27bac95369d1ac44d383f46fee7c3d5731';
 const WRONG_RECIPIENT = '0x973846119C50aB155b2cA776a4361634bc40F720';
@@ -243,7 +243,7 @@ describe('TokenDistributor', function () {
       });
 
       it('approver', async function () {
-        expect(await tokenDistributorAlt.APPROVER()).to.be.eq(approver.address);
+        expect(await tokenDistributorAlt.approver()).to.be.eq(approver.address);
       });
     });
 
@@ -309,18 +309,18 @@ describe('TokenDistributor', function () {
       });
 
       it('changeApprover() works if called by the owner', async function () {
-        const oldApprover = await tokenDistributor.APPROVER();
+        const oldApprover = await tokenDistributor.approver();
 
         await expect(await tokenDistributor.connect(owner).changeApprover(signer1.address))
           .to.emit(tokenDistributor, 'ApproverChanged')
           .withArgs(oldApprover, signer1.address);
-        const newApprover = await tokenDistributor.APPROVER();
+        const newApprover = await tokenDistributor.approver();
         expect(newApprover).to.be.eq(signer1.address);
 
         await expect(await tokenDistributor.connect(owner).changeApprover(ethers.ZeroAddress))
           .to.emit(tokenDistributor, 'ApproverChanged')
           .withArgs(signer1.address, ethers.ZeroAddress);
-        expect(await tokenDistributor.APPROVER()).to.be.eq(ethers.ZeroAddress);
+        expect(await tokenDistributor.approver()).to.be.eq(ethers.ZeroAddress);
       });
 
       it('changeApprover() reverts when called by not owner', async function () {
