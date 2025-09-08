@@ -192,7 +192,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    /// @notice Claim tokens using a signature and merkle proof.
+    /// @notice Claim tokens using a merkle proof.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -210,7 +210,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit Claimed(_account, _amount);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof.
+    /// @notice Claim tokens using a merkle proof.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -237,7 +237,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit ClaimedWithProof(_account, _amount, _dstAddress);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof and stake them with predefined vault.
+    /// @notice Claim tokens using a merkle proof and stake them with predefined vault.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -249,7 +249,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         _claimAndStake(_account, _amount, _merkleProof, _amount);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof and stake part of them with predefined vault.
+    /// @notice Claim tokens using a merkle proof and stake part of them with predefined vault.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
