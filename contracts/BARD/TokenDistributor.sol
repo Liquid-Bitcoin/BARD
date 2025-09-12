@@ -106,10 +106,10 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @notice The the address of account with pauser right
     address public pauser;
 
-    /// @notice Mapping of claimed status.
+    /// @notice Mapping of claimed status. The user is eligible to do no more than one claim.
     mapping(address user => bool claimed) public hasClaimed;
 
-    /// @notice Mapping of claimed status.
+    /// @notice Mapping of claimed status. The user is eligible to do no more than one claim.
     mapping(bytes32 user => bool claimed) public hasClaimedByProof;
 
     /// @notice The address that acts as and approved for claiming tokens to arbitrary address.
@@ -192,7 +192,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    /// @notice Claim tokens using a signature and merkle proof.
+    /// @notice Claim tokens using a merkle proof.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -210,10 +210,11 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit Claimed(_account, _amount);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof.
+    /// @notice Claim tokens using a merkle proof.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
+    /// @param _proof The proof (signature) that _account nomivated _dstAddress to receive tokens.
     function claimWithProof(
         bytes32 _account,
         uint256 _amount,
@@ -236,7 +237,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         emit ClaimedWithProof(_account, _amount, _dstAddress);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof and stake them with predefined vault.
+    /// @notice Claim tokens using a merkle proof and stake them with predefined vault.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -248,7 +249,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
         _claimAndStake(_account, _amount, _merkleProof, _amount);
     }
 
-    /// @notice Claim tokens using a signature and merkle proof and stake part of them with predefined vault.
+    /// @notice Claim tokens using a merkle proof and stake part of them with predefined vault.
     /// @param _account The account to claim tokens for.
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
@@ -268,6 +269,7 @@ contract TokenDistributor is Ownable2Step, Pausable, ReentrancyGuard {
     /// @param _amount Amount of tokens to claim.
     /// @param _merkleProof Merkle proof of claim.
     /// @param _stakeAmount Amount to stake.
+    /// @param _proof The proof (signature) that _account nomivated _dstAddress to receive tokens.
     function claimAndStakeWithProof(
         bytes32 _account,
         uint256 _amount,
