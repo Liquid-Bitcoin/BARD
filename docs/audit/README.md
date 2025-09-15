@@ -1,5 +1,5 @@
 # Audits
- 
+
 This folder consists of the audit reports performed on Liquid Bitcoin EVM smart contracts by various security firms.
 
 ⚠️ Some of the contracts were modified after they were audited.
